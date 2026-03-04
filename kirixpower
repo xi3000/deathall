@@ -1,84 +1,123 @@
--- DELTA iOS DEBUG FREEZE HEIGHT - Check console sau execute
-print("Script started - Delta Freeze vDEBUG")
+-- 🔥 UNIVERSAL FREEZE HEIGHT - DELTA iOS FIXED 2026 - ONE CLICK ALL FIX 🔥
+-- Icon GI đẹp: 🧊 ❄️ | Button giữa trên màn hình | Auto re-freeze sau die
+-- Check console (F9) sau execute: Nếu thấy print "Loaded OK" thì script chạy, GUI phải hiện!
+
+print("[DEBUG] Script started - Freeze Height Universal vFINAL")
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui", 10)
+local playerGui = player:WaitForChild("PlayerGui", 15)
 
-print("PlayerGui found:", playerGui ~= nil)
+print("[DEBUG] PlayerGui loaded:", playerGui ~= nil)
 
--- Tạo ScreenGui đơn giản
+-- Tạo ScreenGui siêu visible
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FreezeDebugGui"
+screenGui.Name = "FreezeHeightUI_" .. math.random(1000,9999)
 screenGui.ResetOnSpawn = false
 screenGui.Enabled = true
 screenGui.IgnoreGuiInset = true
-screenGui.DisplayOrder = 2147483647  -- Max order để trên cùng
+screenGui.DisplayOrder = 2147483647  -- Max để trên cùng mọi UI
 screenGui.Parent = playerGui
 
-print("ScreenGui parented to PlayerGui")
+print("[DEBUG] ScreenGui created and parented")
 
 local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 180, 0, 60)
-button.Position = UDim2.new(0.5, -90, 0.1, 0)  -- Giữa trên, dễ thấy
-button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-button.Text = "TEST BUTTON - FREEZE"
-button.TextColor3 = Color3.new(1,1,1)
+button.Size = UDim2.new(0, 220, 0, 70)  -- To, dễ chạm mobile
+button.Position = UDim2.new(0.5, -110, 0.05, 0)  -- Giữa trên màn hình
+button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+button.Text = "🧊 FREEZE HEIGHT ❄️"
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.TextScaled = true
 button.Font = Enum.Font.GothamBlack
 button.Parent = screenGui
 
-print("Button created - should appear now!")
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 15)
+corner.Parent = button
 
--- Test click
-button.MouseButton1Click:Connect(function()
-    print("Button clicked!")
-    StarterGui:SetCore("SendNotification", {Title="TEST", Text="Button works!", Duration=5})
-end)
+print("[DEBUG] Button created - should be visible now!")
 
--- Freeze logic đơn giản (giữ nguyên như cũ nhưng debug)
+-- Freeze vars
 local isFrozen = false
+local fixedY = nil
+local bodyPos = nil
+local connection = nil
 local hrp = nil
 
-local function toggle()
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        print("No HRP yet")
+local function getHRP()
+    local char = player.Character
+    if char then
+        hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    end
+    return hrp
+end
+
+local function toggleFreeze()
+    if not getHRP() then
+        print("[DEBUG] No HRP - waiting character")
+        StarterGui:SetCore("SendNotification", {Title = "❌ Lỗi", Text = "Chưa load nhân vật! Chờ tí...", Duration = 3})
         return
     end
-    hrp = player.Character.HumanoidRootPart
-    
+
     if not isFrozen then
-        local fixedY = hrp.Position.Y
-        local bp = Instance.new("BodyPosition")
-        bp.MaxForce = Vector3.new(0, math.huge, 0)
-        bp.Position = Vector3.new(hrp.Position.X, fixedY, hrp.Position.Z)
-        bp.P = 30000
-        bp.D = 5000
-        bp.Parent = hrp
-        print("Frozen at Y:", fixedY)
-        button.Text = "UNFREEZE"
+        fixedY = hrp.Position.Y
+        bodyPos = Instance.new("BodyPosition")
+        bodyPos.MaxForce = Vector3.new(0, math.huge, 0)  -- Chỉ lock Y
+        bodyPos.P = 25000
+        bodyPos.D = 4000
+        bodyPos.Parent = hrp
+
+        connection = RunService.Heartbeat:Connect(function()
+            if hrp and fixedY and bodyPos then
+                local pos = hrp.Position
+                bodyPos.Position = Vector3.new(pos.X, fixedY, pos.Z)
+            end
+        end)
+
         isFrozen = true
+        button.Text = "🔓 UNFREEZE ❄️"
+        button.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+        print("[DEBUG] Frozen at Y: " .. fixedY)
+        StarterGui:SetCore("SendNotification", {Title = "🧊 FREEZED!", Text = "Độ cao cố định: " .. math.floor(fixedY), Duration = 4})
     else
-        -- Tìm và destroy BodyPosition
-        for _, v in pairs(hrp:GetChildren()) do
-            if v:IsA("BodyPosition") then v:Destroy() end
-        end
-        print("Unfrozen")
-        button.Text = "FREEZE HEIGHT"
+        if connection then connection:Disconnect() end
+        if bodyPos then bodyPos:Destroy() end
         isFrozen = false
+        button.Text = "🧊 FREEZE HEIGHT ❄️"
+        button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+        print("[DEBUG] Unfrozen")
+        StarterGui:SetCore("SendNotification", {Title = "🔓 UNFREEZED!", Text = "Rơi bình thường", Duration = 3})
     end
 end
 
-button.MouseButton1Click:Connect(toggle)
+button.MouseButton1Click:Connect(toggleFreeze)
 
--- Respawn handle
+-- Auto re-apply nếu đang frozen sau respawn
 player.CharacterAdded:Connect(function()
-    print("Character respawned - re-init")
-    wait(3)
+    print("[DEBUG] Character respawned")
+    wait(3)  -- Delta mobile load chậm
+    getHRP()
+    if isFrozen and fixedY then
+        toggleFreeze()  -- Off rồi on lại để apply
+        wait(0.2)
+        toggleFreeze()
+    end
 end)
 
-StarterGui:SetCore("SendNotification", {Title="DEBUG LOADED", Text="Check console! Button ở giữa trên màn hình", Duration=10})
-print("Full script loaded - Look for red button!")
+-- Initial check
+spawn(function()
+    wait(4)
+    getHRP()
+    print("[DEBUG] Initial HRP check done")
+end)
+
+StarterGui:SetCore("SendNotification", {
+    Title = "🚀 FREEZE HEIGHT LOADED!",
+    Text = "Button giữa trên màn hình - Touch để freeze! Check console nếu ko thấy.",
+    Duration = 8
+})
+
+print("[DEBUG] Full script loaded OK - Look for blue/red button!")
