@@ -1,0 +1,138 @@
+if getgenv().FreezeHeightLoaded then return end
+getgenv().FreezeHeightLoaded = true
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local coreGui = game:GetService("CoreGui")
+
+-- Tạo GUI ở CoreGui (universal cho mọi executor/game)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UniversalFreezeHeight"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = coreGui
+
+local button = Instance.new("TextButton")
+button.Name = "FreezeButton"
+button.Size = UDim2.new(0, 220, 0, 55)
+button.Position = UDim2.new(0, 15, 0, 15)
+button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+button.Text = "🧊 FREEZE HEIGHT (RCtrl)"
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = button
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Thickness = 2
+stroke.Parent = button
+
+-- Biến global
+local fixedY = nil
+local bodyPosition = nil
+local heartbeatConnection = nil
+local isFrozen = false
+local character = nil
+local humanoidRootPart = nil
+
+local function getCharacter()
+    character = player.Character
+    if character then
+        humanoidRootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+    end
+    return humanoidRootPart ~= nil
+end
+
+local function toggleFreeze()
+    if not getCharacter() then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Freeze Height";
+            Text = "Chưa load nhân vật! Thử lại...";
+            Duration = 2;
+        })
+        return
+    end
+
+    if not isFrozen then
+        -- FREEZE: Lấy Y hiện tại
+        fixedY = humanoidRootPart.Position.Y
+        bodyPosition = Instance.new("BodyPosition")
+        bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)  -- Chỉ force Y, X/Z tự do
+        bodyPosition.Position = Vector3.new(0, fixedY, 0)
+        bodyPosition.P = 20000
+        bodyPosition.D = 3000
+        bodyPosition.Parent = humanoidRootPart
+
+        -- Update X/Z mỗi frame (mượt, không lag)
+        heartbeatConnection = RunService.Heartbeat:Connect(function()
+            if humanoidRootPart and humanoidRootPart.Parent and fixedY and bodyPosition then
+                local pos = humanoidRootPart.Position
+                bodyPosition.Position = Vector3.new(pos.X, fixedY, pos.Z)
+            end
+        end)
+
+        isFrozen = true
+        button.Text = "✅ UNFREEZE (RCtrl)"
+        button.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "🧊 FREEZED!";
+            Text = "Độ cao Y = " .. math.floor(fixedY) .. " | Di chuyển tự do!";
+            Duration = 3;
+        })
+    else
+        -- UNFREEZE
+        if heartbeatConnection then heartbeatConnection:Disconnect() end
+        if bodyPosition then bodyPosition:Destroy() end
+        
+        isFrozen = false
+        button.Text = "🧊 FREEZE HEIGHT (RCtrl)"
+        button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "🔓 UNFREEZED!";
+            Text = "Rơi bình thường!";
+            Duration = 2;
+        })
+    end
+end
+
+-- Button click
+button.MouseButton1Click:Connect(toggleFreeze)
+
+-- Hotkey: Right Ctrl
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        toggleFreeze()
+    end
+end)
+
+-- Auto respawn handle (universal)
+local function onCharacterAdded()
+    wait(1)  -- Đợi load đầy đủ
+    getCharacter()
+    if isFrozen and fixedY then
+        toggleFreeze()  -- Auto re-freeze nếu đang on
+        wait(0.5)
+        toggleFreeze()  -- Toggle lại để apply
+    end
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+getCharacter()  -- Initial
+
+-- Notify loaded
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🚀 Universal Freeze Height LOADED!";
+    Text = "Button top-left | RCtrl toggle | Work all games!";
+    Duration = 4;
+})
+print("🌟 Universal Freeze Height by Grok - Loaded successfully!")
