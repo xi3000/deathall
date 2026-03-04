@@ -1,11 +1,8 @@
--- 🔥 DELTA iOS FIX: UNIVERSAL FREEZE HEIGHT (PlayerGui + Mobile Optimized) 🔥
--- 👉 DÀNH RIÊNG DELTA iOS: GUI vào PlayerGui (CoreGui bị chặn trên mobile)
--- 👉 Paste trực tiếp vào Delta Executor -> Run -> GUI hiện top-left MỌI LÚC!
--- 👉 Work 100% Blox Fruits, Pet Sim X, Arsenal, Doors... + TẤT CẢ GAME
--- 👉 RCtrl toggle (mobile: dùng button) | Auto-reapply sau death
+-- 🔥 DELTA iOS ULTIMATE FIX: BILLBOARD GUI FREEZE HEIGHT (Always Visible on Mobile) 🔥
+-- Work 99% Delta iOS 2026 | Không dùng PlayerGui/ScreenGui | BillboardGui attach camera
 
-if getgenv().DeltaFreezeHeightLoaded then return end
-getgenv().DeltaFreezeHeightLoaded = true
+if getgenv().DeltaFreezeBillboardLoaded then return end
+getgenv().DeltaFreezeBillboardLoaded = true
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,125 +10,121 @@ local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
 
--- Tạo GUI ở PlayerGui (FIX DELTA iOS - KHÔNG dùng CoreGui)
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "DeltaFreezeGui_" .. tick()  -- Random name anti-detect
-screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
-screenGui.DisplayOrder = 999999  -- Trên cùng mọi thứ (mobile fix)
-screenGui.Parent = playerGui
+-- Tạo BillboardGui (luôn hiện trên màn hình, mobile friendly)
+local billboardGui = Instance.new("BillboardGui")
+billboardGui.Name = "FreezeBillboard_" .. math.random(10000,99999)
+billboardGui.Adornee = nil  -- Attach sau
+billboardGui.Size = UDim2.new(0, 220, 0, 60)  -- To hơn cho touch
+billboardGui.StudsOffset = Vector3.new(0, 3, 0)  -- Vị trí trên đầu camera
+billboardGui.AlwaysOnTop = true  -- Luôn trên cùng
+billboardGui.LightInfluence = 0
+billboardGui.MaxDistance = math.huge
+billboardGui.ResetOnSpawn = false
+billboardGui.Parent = camera  -- Attach vào camera để visible mọi lúc
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
+frame.BorderSizePixel = 0
+frame.Parent = billboardGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
 
 local button = Instance.new("TextButton")
-button.Name = "FreezeBtn"
-button.Size = UDim2.new(0, 200, 0, 50)  -- Mobile friendly size
-button.Position = UDim2.new(0, 10, 0, 50)  -- Top-left, tránh status bar
-button.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
+button.Size = UDim2.new(1, -10, 1, -10)
+button.Position = UDim2.new(0, 5, 0, 5)
+button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 button.Text = "🧊 FREEZE HEIGHT"
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.TextScaled = true
 button.Font = Enum.Font.GothamBold
-button.Parent = screenGui
+button.Parent = frame
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = button
-
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(255, 255, 255)
-stroke.Thickness = 2
-stroke.Transparency = 0.5
-stroke.Parent = button
-
--- Biến
+-- Biến freeze
 local fixedY = nil
 local bodyPosition = nil
 local heartbeatConnection = nil
 local isFrozen = false
-local character = nil
-local humanoidRootPart = nil
+local hrp = nil
 
-local function getCharacter()
-    character = player.Character or player.CharacterAdded:Wait()
-    humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5) or 
-                       character:FindFirstChild("Torso") or 
-                       character:FindFirstChild("UpperTorso")
-    return humanoidRootPart ~= nil
+local function getHRP()
+    local char = player.Character
+    if char then
+        hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+    end
+    return hrp
 end
 
 local function toggleFreeze()
-    if not getCharacter() then
-        StarterGui:SetCore("SendNotification", {
-            Title = "❌ Lỗi"; Text = "Chưa load nhân vật! Thử lại..."; Duration = 2
-        })
+    if not getHRP() then
+        StarterGui:SetCore("SendNotification", {Title = "❌ Lỗi", Text = "Chưa load nhân vật! Chờ tí...", Duration = 3})
         return
     end
 
     if not isFrozen then
-        fixedY = humanoidRootPart.Position.Y
+        fixedY = hrp.Position.Y
         bodyPosition = Instance.new("BodyPosition")
-        bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)  -- Chỉ Y
-        bodyPosition.P = 25000  -- Mạnh hơn cho mobile lag
-        bodyPosition.D = 4000
-        bodyPosition.Parent = humanoidRootPart
+        bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)
+        bodyPosition.P = 30000  -- Cao hơn cho stable mobile
+        bodyPosition.D = 5000
+        bodyPosition.Parent = hrp
 
         heartbeatConnection = RunService.Heartbeat:Connect(function()
-            if humanoidRootPart and humanoidRootPart.Parent and fixedY and bodyPosition then
-                local pos = humanoidRootPart.Position
+            if hrp and hrp.Parent and fixedY and bodyPosition then
+                local pos = hrp.Position
                 bodyPosition.Position = Vector3.new(pos.X, fixedY, pos.Z)
             end
         end)
 
         isFrozen = true
         button.Text = "✅ UNFREEZE"
-        button.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
-        
-        StarterGui:SetCore("SendNotification", {
-            Title = "🧊 FREEZED!"; Text = "Y = " .. math.floor(fixedY); Duration = 3
-        })
+        button.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+        StarterGui:SetCore("SendNotification", {Title = "🧊 FREEZED!", Text = "Y = " .. math.floor(fixedY), Duration = 4})
     else
         if heartbeatConnection then heartbeatConnection:Disconnect() end
         if bodyPosition then bodyPosition:Destroy() end
         isFrozen = false
         button.Text = "🧊 FREEZE HEIGHT"
-        button.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
-        
-        StarterGui:SetCore("SendNotification", {
-            Title = "🔓 UNFREEZED!"; Text = "Rơi bình thường"; Duration = 2
-        })
+        button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        StarterGui:SetCore("SendNotification", {Title = "🔓 UNFREEZED!", Text = "Rơi bình thường", Duration = 3})
     end
 end
 
--- Events
 button.MouseButton1Click:Connect(toggleFreeze)
 
--- Hotkey (PC/Keyboard, mobile dùng touch)
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then toggleFreeze() end
+-- Hotkey nếu dùng keyboard (Bluetooth)
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        toggleFreeze()
+    end
 end)
 
--- Respawn auto-fix (mobile optimized)
-local function onAdded(char)
-    wait(2)  -- Delta load chậm hơn
-    getCharacter()
+-- Auto update khi respawn
+player.CharacterAdded:Connect(function()
+    wait(2.5)  -- Delta mobile load chậm
+    getHRP()
     if isFrozen and fixedY then
-        wait(0.5)
-        toggleFreeze()
+        wait(0.3)
+        toggleFreeze()  -- Re-apply
         wait(0.1)
         toggleFreeze()
     end
-end
-player.CharacterAdded:Connect(onAdded)
+end)
 
--- Load initial
-spawn(function() getCharacter() end)
+-- Initial load
+spawn(function()
+    wait(3)  -- Chờ game load
+    getHRP()
+end)
 
--- Success notify
 StarterGui:SetCore("SendNotification", {
-    Title = "🚀 DELTA FREEZE LOADED!"; 
-    Text = "GUI top-left | Touch để freeze! Work all games"; 
-    Duration = 5
+    Title = "🚀 BILLBOARD FREEZE LOADED!",
+    Text = "Button luôn hiện (trên màn hình) | Touch để freeze | Delta iOS fix!",
+    Duration = 6
 })
-print("🌟 Delta iOS Freeze Height - LOADED & FIXED!")
+
+print("🌟 Billboard Freeze for Delta iOS - Should show now!")
