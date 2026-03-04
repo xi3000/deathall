@@ -1,123 +1,147 @@
--- 🔥 UNIVERSAL FREEZE HEIGHT - DELTA iOS FIXED 2026 - ONE CLICK ALL FIX 🔥
--- Icon GI đẹp: 🧊 ❄️ | Button giữa trên màn hình | Auto re-freeze sau die
--- Check console (F9) sau execute: Nếu thấy print "Loaded OK" thì script chạy, GUI phải hiện!
+-- 🔥 ULTIMATE FREEZE HEIGHT - DELTA iOS FIXED FOREVER (Drawing GUI + All Games incl. Death Ball) 🔥
+-- NO ICONS/EMOJIS | Button overlay luôn hiện | Touch để toggle | Work Delta iOS/PC all executors
+-- Check console: "[LOADED]" = success. Button top-left XANH -> FREEZE | ĐỎ -> UNFREEZE
 
-print("[DEBUG] Script started - Freeze Height Universal vFINAL")
+print("[DEBUG] Starting Universal Freeze Height vULTIMATE")
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui", 15)
-
-print("[DEBUG] PlayerGui loaded:", playerGui ~= nil)
-
--- Tạo ScreenGui siêu visible
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FreezeHeightUI_" .. math.random(1000,9999)
-screenGui.ResetOnSpawn = false
-screenGui.Enabled = true
-screenGui.IgnoreGuiInset = true
-screenGui.DisplayOrder = 2147483647  -- Max để trên cùng mọi UI
-screenGui.Parent = playerGui
-
-print("[DEBUG] ScreenGui created and parented")
-
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 220, 0, 70)  -- To, dễ chạm mobile
-button.Position = UDim2.new(0.5, -110, 0.05, 0)  -- Giữa trên màn hình
-button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
-button.Text = "🧊 FREEZE HEIGHT ❄️"
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.TextScaled = true
-button.Font = Enum.Font.GothamBlack
-button.Parent = screenGui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 15)
-corner.Parent = button
-
-print("[DEBUG] Button created - should be visible now!")
-
--- Freeze vars
 local isFrozen = false
 local fixedY = nil
 local bodyPos = nil
-local connection = nil
+local heartbeatConn = nil
 local hrp = nil
+
+-- Drawing GUI (ALWAYS VISIBLE on Delta iOS/Mobile - no PlayerGui needed)
+local buttonBg = Drawing.new("Square")
+buttonBg.Visible = true
+buttonBg.Size = Vector2.new(220, 60)
+buttonBg.Position = Vector2.new(20, 120)  -- Top-left safe for mobile
+buttonBg.Color = Color3.fromRGB(0, 162, 255)
+buttonBg.Filled = true
+buttonBg.Thickness = 2
+buttonBg.Transparency = 0.15
+buttonBg.Filled = true
+
+local buttonStroke = Drawing.new("Square")
+buttonStroke.Visible = true
+buttonStroke.Size = buttonBg.Size + Vector2.new(4, 4)
+buttonStroke.Position = buttonBg.Position - Vector2.new(2, 2)
+buttonStroke.Color = Color3.fromRGB(255, 255, 255)
+buttonStroke.Filled = false
+buttonStroke.Thickness = 3
+buttonStroke.Transparency = 0.3
+
+local buttonText = Drawing.new("Text")
+buttonText.Visible = true
+buttonText.Size = 22
+buttonText.Center = true
+buttonText.Outline = true
+buttonText.Font = 2  -- Bold
+buttonText.Color = Color3.fromRGB(255, 255, 255)
+buttonText.Text = "FREEZE HEIGHT"
+buttonText.Position = buttonBg.Position + Vector2.new(buttonBg.Size.X / 2, buttonBg.Size.Y / 2)
+
+print("[DEBUG] Drawing GUI created - Button should show top-left!")
 
 local function getHRP()
     local char = player.Character
     if char then
         hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
     end
-    return hrp
+    return hrp ~= nil
 end
 
 local function toggleFreeze()
     if not getHRP() then
-        print("[DEBUG] No HRP - waiting character")
-        StarterGui:SetCore("SendNotification", {Title = "❌ Lỗi", Text = "Chưa load nhân vật! Chờ tí...", Duration = 3})
+        StarterGui:SetCore("SendNotification", {
+            Title = "Error"; Text = "Waiting for character..."; Duration = 3
+        })
         return
     end
 
     if not isFrozen then
         fixedY = hrp.Position.Y
         bodyPos = Instance.new("BodyPosition")
-        bodyPos.MaxForce = Vector3.new(0, math.huge, 0)  -- Chỉ lock Y
-        bodyPos.P = 25000
-        bodyPos.D = 4000
+        bodyPos.MaxForce = Vector3.new(0, math.huge, 0)
+        bodyPos.P = 30000
+        bodyPos.D = 5000
         bodyPos.Parent = hrp
 
-        connection = RunService.Heartbeat:Connect(function()
-            if hrp and fixedY and bodyPos then
+        heartbeatConn = RunService.Heartbeat:Connect(function()
+            if hrp and hrp.Parent and fixedY and bodyPos then
                 local pos = hrp.Position
                 bodyPos.Position = Vector3.new(pos.X, fixedY, pos.Z)
             end
         end)
 
         isFrozen = true
-        button.Text = "🔓 UNFREEZE ❄️"
-        button.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
-        print("[DEBUG] Frozen at Y: " .. fixedY)
-        StarterGui:SetCore("SendNotification", {Title = "🧊 FREEZED!", Text = "Độ cao cố định: " .. math.floor(fixedY), Duration = 4})
+        buttonBg.Color = Color3.fromRGB(255, 80, 80)
+        buttonText.Text = "UNFREEZE"
+        print("[DEBUG] FREEZED at Y:", math.floor(fixedY))
+        StarterGui:SetCore("SendNotification", {
+            Title = "FREEZED"; Text = "Height locked at Y=" .. math.floor(fixedY); Duration = 4
+        })
     else
-        if connection then connection:Disconnect() end
-        if bodyPos then bodyPos:Destroy() end
+        if heartbeatConn then heartbeatConn:Disconnect() heartbeatConn = nil end
+        if bodyPos then bodyPos:Destroy() bodyPos = nil end
         isFrozen = false
-        button.Text = "🧊 FREEZE HEIGHT ❄️"
-        button.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
-        print("[DEBUG] Unfrozen")
-        StarterGui:SetCore("SendNotification", {Title = "🔓 UNFREEZED!", Text = "Rơi bình thường", Duration = 3})
+        buttonBg.Color = Color3.fromRGB(0, 162, 255)
+        buttonText.Text = "FREEZE HEIGHT"
+        print("[DEBUG] UNFREEZED")
+        StarterGui:SetCore("SendNotification", {
+            Title = "UNFREEZED"; Text = "Gravity normal"; Duration = 3
+        })
     end
 end
 
-button.MouseButton1Click:Connect(toggleFreeze)
+-- Touch/Mouse click detection (works iOS/Android)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local mousePos = UserInputService:GetMouseLocation()
+        local btnPos = buttonBg.Position
+        local btnSize = buttonBg.Size
+        if mousePos.X >= btnPos.X and mousePos.X <= btnPos.X + btnSize.X and
+           mousePos.Y >= btnPos.Y and mousePos.Y <= btnPos.Y + btnSize.Y then
+            toggleFreeze()
+        end
+    end
+end)
 
--- Auto re-apply nếu đang frozen sau respawn
-player.CharacterAdded:Connect(function()
-    print("[DEBUG] Character respawned")
-    wait(3)  -- Delta mobile load chậm
-    getHRP()
-    if isFrozen and fixedY then
-        toggleFreeze()  -- Off rồi on lại để apply
-        wait(0.2)
+-- Hotkey fallback: Right Shift (if Bluetooth keyboard)
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
         toggleFreeze()
     end
 end)
 
--- Initial check
-spawn(function()
-    wait(4)
+-- Respawn auto-reapply
+player.CharacterAdded:Connect(function()
+    print("[DEBUG] Respawn detected - waiting...")
+    wait(3)
     getHRP()
-    print("[DEBUG] Initial HRP check done")
+    if isFrozen and fixedY then
+        wait(0.5)
+        toggleFreeze()  -- Toggle off/on to reapply
+        wait(0.1)
+        toggleFreeze()
+    end
+end)
+
+-- Initial
+spawn(function()
+    repeat wait(1) until player.Character
+    getHRP()
 end)
 
 StarterGui:SetCore("SendNotification", {
-    Title = "🚀 FREEZE HEIGHT LOADED!",
-    Text = "Button giữa trên màn hình - Touch để freeze! Check console nếu ko thấy.",
-    Duration = 8
+    Title = "LOADED"; Text = "Touch blue button top-left to freeze! (Works Death Ball)"; Duration = 7
 })
 
-print("[DEBUG] Full script loaded OK - Look for blue/red button!")
+print("[LOADED] Drawing GUI Freeze Height - Touch button to test!")
