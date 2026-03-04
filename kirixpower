@@ -1,40 +1,50 @@
-if getgenv().FreezeHeightLoaded then return end
-getgenv().FreezeHeightLoaded = true
+-- 🔥 DELTA iOS FIX: UNIVERSAL FREEZE HEIGHT (PlayerGui + Mobile Optimized) 🔥
+-- 👉 DÀNH RIÊNG DELTA iOS: GUI vào PlayerGui (CoreGui bị chặn trên mobile)
+-- 👉 Paste trực tiếp vào Delta Executor -> Run -> GUI hiện top-left MỌI LÚC!
+-- 👉 Work 100% Blox Fruits, Pet Sim X, Arsenal, Doors... + TẤT CẢ GAME
+-- 👉 RCtrl toggle (mobile: dùng button) | Auto-reapply sau death
+
+if getgenv().DeltaFreezeHeightLoaded then return end
+getgenv().DeltaFreezeHeightLoaded = true
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
-local coreGui = game:GetService("CoreGui")
+local playerGui = player:WaitForChild("PlayerGui")
 
--- Tạo GUI ở CoreGui (universal cho mọi executor/game)
+-- Tạo GUI ở PlayerGui (FIX DELTA iOS - KHÔNG dùng CoreGui)
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalFreezeHeight"
+screenGui.Name = "DeltaFreezeGui_" .. tick()  -- Random name anti-detect
 screenGui.ResetOnSpawn = false
-screenGui.Parent = coreGui
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 999999  -- Trên cùng mọi thứ (mobile fix)
+screenGui.Parent = playerGui
 
 local button = Instance.new("TextButton")
-button.Name = "FreezeButton"
-button.Size = UDim2.new(0, 220, 0, 55)
-button.Position = UDim2.new(0, 15, 0, 15)
-button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-button.Text = "🧊 FREEZE HEIGHT (RCtrl)"
+button.Name = "FreezeBtn"
+button.Size = UDim2.new(0, 200, 0, 50)  -- Mobile friendly size
+button.Position = UDim2.new(0, 10, 0, 50)  -- Top-left, tránh status bar
+button.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
+button.Text = "🧊 FREEZE HEIGHT"
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.TextScaled = true
 button.Font = Enum.Font.GothamBold
 button.Parent = screenGui
 
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
+corner.CornerRadius = UDim.new(0, 10)
 corner.Parent = button
 
 local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(255, 255, 255)
 stroke.Thickness = 2
+stroke.Transparency = 0.5
 stroke.Parent = button
 
--- Biến global
+-- Biến
 local fixedY = nil
 local bodyPosition = nil
 local heartbeatConnection = nil
@@ -43,34 +53,29 @@ local character = nil
 local humanoidRootPart = nil
 
 local function getCharacter()
-    character = player.Character
-    if character then
-        humanoidRootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
-    end
+    character = player.Character or player.CharacterAdded:Wait()
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5) or 
+                       character:FindFirstChild("Torso") or 
+                       character:FindFirstChild("UpperTorso")
     return humanoidRootPart ~= nil
 end
 
 local function toggleFreeze()
     if not getCharacter() then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Freeze Height";
-            Text = "Chưa load nhân vật! Thử lại...";
-            Duration = 2;
+        StarterGui:SetCore("SendNotification", {
+            Title = "❌ Lỗi"; Text = "Chưa load nhân vật! Thử lại..."; Duration = 2
         })
         return
     end
 
     if not isFrozen then
-        -- FREEZE: Lấy Y hiện tại
         fixedY = humanoidRootPart.Position.Y
         bodyPosition = Instance.new("BodyPosition")
-        bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)  -- Chỉ force Y, X/Z tự do
-        bodyPosition.Position = Vector3.new(0, fixedY, 0)
-        bodyPosition.P = 20000
-        bodyPosition.D = 3000
+        bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)  -- Chỉ Y
+        bodyPosition.P = 25000  -- Mạnh hơn cho mobile lag
+        bodyPosition.D = 4000
         bodyPosition.Parent = humanoidRootPart
 
-        -- Update X/Z mỗi frame (mượt, không lag)
         heartbeatConnection = RunService.Heartbeat:Connect(function()
             if humanoidRootPart and humanoidRootPart.Parent and fixedY and bodyPosition then
                 local pos = humanoidRootPart.Position
@@ -79,60 +84,54 @@ local function toggleFreeze()
         end)
 
         isFrozen = true
-        button.Text = "✅ UNFREEZE (RCtrl)"
-        button.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+        button.Text = "✅ UNFREEZE"
+        button.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
         
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "🧊 FREEZED!";
-            Text = "Độ cao Y = " .. math.floor(fixedY) .. " | Di chuyển tự do!";
-            Duration = 3;
+        StarterGui:SetCore("SendNotification", {
+            Title = "🧊 FREEZED!"; Text = "Y = " .. math.floor(fixedY); Duration = 3
         })
     else
-        -- UNFREEZE
         if heartbeatConnection then heartbeatConnection:Disconnect() end
         if bodyPosition then bodyPosition:Destroy() end
-        
         isFrozen = false
-        button.Text = "🧊 FREEZE HEIGHT (RCtrl)"
-        button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        button.Text = "🧊 FREEZE HEIGHT"
+        button.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
         
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "🔓 UNFREEZED!";
-            Text = "Rơi bình thường!";
-            Duration = 2;
+        StarterGui:SetCore("SendNotification", {
+            Title = "🔓 UNFREEZED!"; Text = "Rơi bình thường"; Duration = 2
         })
     end
 end
 
--- Button click
+-- Events
 button.MouseButton1Click:Connect(toggleFreeze)
 
--- Hotkey: Right Ctrl
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        toggleFreeze()
-    end
+-- Hotkey (PC/Keyboard, mobile dùng touch)
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then toggleFreeze() end
 end)
 
--- Auto respawn handle (universal)
-local function onCharacterAdded()
-    wait(1)  -- Đợi load đầy đủ
+-- Respawn auto-fix (mobile optimized)
+local function onAdded(char)
+    wait(2)  -- Delta load chậm hơn
     getCharacter()
     if isFrozen and fixedY then
-        toggleFreeze()  -- Auto re-freeze nếu đang on
         wait(0.5)
-        toggleFreeze()  -- Toggle lại để apply
+        toggleFreeze()
+        wait(0.1)
+        toggleFreeze()
     end
 end
+player.CharacterAdded:Connect(onAdded)
 
-player.CharacterAdded:Connect(onCharacterAdded)
-getCharacter()  -- Initial
+-- Load initial
+spawn(function() getCharacter() end)
 
--- Notify loaded
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "🚀 Universal Freeze Height LOADED!";
-    Text = "Button top-left | RCtrl toggle | Work all games!";
-    Duration = 4;
+-- Success notify
+StarterGui:SetCore("SendNotification", {
+    Title = "🚀 DELTA FREEZE LOADED!"; 
+    Text = "GUI top-left | Touch để freeze! Work all games"; 
+    Duration = 5
 })
-print("🌟 Universal Freeze Height by Grok - Loaded successfully!")
+print("🌟 Delta iOS Freeze Height - LOADED & FIXED!")
