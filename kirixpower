@@ -1,73 +1,89 @@
--- 🔥 FINAL FREEZE HEIGHT - NO GUI NEEDED - CHAT COMMAND /freeze (work Delta iOS 2026 + Death Ball) 🔥
+local button = script.Parent
+local player = game.Players.LocalPlayer
+local frozen = false
+local cooldown = false
+local cooldownTime = 5
 
-print("[FINAL] Freeze Height loaded - Type /freeze in chat to toggle!")
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
-local ChatService = game:GetService("Chat")
-
-local player = Players.LocalPlayer
-local isFrozen = false
-local fixedY = nil
-local bodyPos = nil
-local conn = nil
-local hrp = nil
-
-local function getHRP()
-    local char = player.Character
-    if char then hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") end
-    return hrp
+-- Tạo hiệu ứng highlight
+local function addEffect(char)
+    if char and not char:FindFirstChild("FreezeEffect") then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "FreezeEffect"
+        highlight.FillColor = Color3.fromRGB(100, 200, 255)
+        highlight.OutlineColor = Color3.fromRGB(0, 100, 255)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = char
+    end
 end
 
-local function toggleFreeze()
-    if not getHRP() then
-        StarterGui:SetCore("SendNotification", {Title="Wait", Text="No character yet...", Duration=3})
+local function removeEffect(char)
+    if char then
+        local effect = char:FindFirstChild("FreezeEffect")
+        if effect then effect:Destroy() end
+    end
+end
+
+-- Cập nhật UI ban đầu
+button.Text = "Freeze"
+button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+
+button.MouseButton1Click:Connect(function()
+    if cooldown then
+        -- Có thể add print hoặc thông báo nếu muốn
         return
     end
 
-    if not isFrozen then
-        fixedY = hrp.Position.Y
-        bodyPos = Instance.new("BodyPosition")
-        bodyPos.MaxForce = Vector3.new(0, math.huge, 0)
-        bodyPos.P = 40000
-        bodyPos.D = 6000
-        bodyPos.Parent = hrp
+    local character = player.Character
+    if not character then
+        button.Text = "No Character!"
+        task.wait(1)
+        button.Text = frozen and "Unfreeze" or "Freeze"
+        return
+    end
 
-        conn = RunService.Heartbeat:Connect(function()
-            if hrp and fixedY then
-                local pos = hrp.Position
-                bodyPos.Position = Vector3.new(pos.X, fixedY, pos.Z)
-            end
-        end)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local root = character:FindFirstChild("HumanoidRootPart")
 
-        isFrozen = true
-        StarterGui:SetCore("SendNotification", {Title="🧊 FREEZED", Text="Y locked at " .. math.floor(fixedY) .. " | Type /freeze to unfreeze", Duration=5})
+    if not (humanoid and root) then
+        button.Text = "No Humanoid/Root!"
+        task.wait(1)
+        button.Text = frozen and "Unfreeze" or "Freeze"
+        return
+    end
+
+    frozen = not frozen
+    cooldown = true
+
+    if frozen then
+        -- Freeze
+        root.Anchored = true
+        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+
+        addEffect(character)
+
+        button.Text = "Unfreeze"
+        button.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
     else
-        if conn then conn:Disconnect() end
-        if bodyPos then bodyPos:Destroy() end
-        isFrozen = false
-        StarterGui:SetCore("SendNotification", {Title="🔓 UNFREEZED", Text="Normal gravity", Duration=4})
-    end
-end
+        -- Unfreeze
+        root.Anchored = false
 
--- Chat command toggle
-player.Chatted:Connect(function(msg)
-    if msg:lower() == "/freeze" or msg:lower() == "/f" then
-        toggleFreeze()
+        removeEffect(character)
+
+        button.Text = "Freeze"
+        button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
     end
+
+    -- Cooldown (chỉ khi unfreeze mới cooldown, hoặc bạn muốn cả 2 chiều thì bỏ if)
+    if not frozen then
+        button.Text = "Cooldown... (" .. cooldownTime .. "s)"
+        for i = cooldownTime, 1, -1 do
+            task.wait(1)
+            button.Text = "Cooldown... (" .. i .. "s)"
+        end
+    end
+
+    cooldown = false
+    button.Text = frozen and "Unfreeze" or "Freeze"
 end)
-
--- Auto re-freeze sau die
-player.CharacterAdded:Connect(function()
-    wait(4)
-    getHRP()
-    if isFrozen and fixedY then
-        toggleFreeze()
-        wait(0.3)
-        toggleFreeze()
-    end
-end)
-
-StarterGui:SetCore("SendNotification", {Title="LOADED OK", Text="Type /freeze in chat to freeze height! Works all games incl Death Ball", Duration=10})
-print("[FINAL] Ready - Use chat /freeze")
